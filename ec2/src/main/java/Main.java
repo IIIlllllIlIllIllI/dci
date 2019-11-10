@@ -55,14 +55,44 @@ public class Main {
                 .build();
 
         /***************** List the availability zones ****************/
-        //you should extend this part of the code
+        DescribeRegionsResult regions_response = ec2.describeRegions();
+
+        for(Region region : regions_response.getRegions()) {
+            System.out.printf(
+                    "Found region %s " +
+                            "with endpoint %s\n",
+                    region.getRegionName(),
+                    region.getEndpoint());
+        }
+
+        DescribeAvailabilityZonesResult zones_response =
+                ec2.describeAvailabilityZones();
+
+        for(AvailabilityZone zone : zones_response.getAvailabilityZones()) {
+            System.out.printf(
+                    "Found availability zone %s " +
+                            "with status %s " +
+                            "in region %s\n",
+                    zone.getZoneName(),
+                    zone.getState(),
+                    zone.getRegionName());
+        }
 
         /***************** Set a filter on available AMIs/VMIs ****************/
-        //you should extend this part of the code
+        List<Filter> filters=new LinkedList<>();
+        filters.add(new Filter("architecture").withValues("x86_64"));
+        filters.add(new Filter("image-id").withValues(IMAGE_ID));
+        DescribeImagesRequest describeImagesRequest=new DescribeImagesRequest().withFilters(filters);
+        DescribeImagesResult describeImages = ec2.describeImages(describeImagesRequest);
+        for (Image image:
+                describeImages.getImages()) {
+            System.out.println(image);
+        }
 
         /***************** Create new security group ****************/
         String gid = null;
         String groupNamePrefix = "JavaSecurityGroup";
+        String secGroupName="";
 
         // check for exiting group first
         DescribeSecurityGroupsRequest req = new DescribeSecurityGroupsRequest();
@@ -81,7 +111,8 @@ public class Main {
             // create new group
             try {
                 CreateSecurityGroupRequest csgr = new CreateSecurityGroupRequest();
-                csgr.withGroupName(groupNamePrefix + (Math.random())).withDescription("Proseminar security group");
+                secGroupName=groupNamePrefix + (Math.random());
+                csgr.withGroupName(secGroupName).withDescription("Proseminar security group");
                 CreateSecurityGroupResult resultsc = ec2.createSecurityGroup(csgr);
                 System.out.println(String.format("Security group created: [%s]", resultsc.getGroupId()));
                 gid = resultsc.getGroupId();
@@ -155,6 +186,8 @@ public class Main {
         RunInstancesRequest run_request = new RunInstancesRequest()
                 .withImageId(IMAGE_ID)
                 .withInstanceType(InstanceType.T2Micro)
+                .withKeyName(keyname)
+                .withSecurityGroups(secGroupName)
                 .withMaxCount(1)
                 .withMinCount(1);
 
@@ -193,7 +226,19 @@ public class Main {
         System.out.println("created and attached volume: " + volumeId);
 
         /***************** Print the public IP and DNS of the instance ****************/
-        // You should extend this part of the code
+        DescribeAddressesResult response = ec2.describeAddresses();
+
+        for(Address address : response.getAddresses()) {
+            System.out.printf(
+                    "Found address with public IP %s, " +
+                            "domain %s, " +
+                            "allocation id %s " +
+                            "and NIC id %s\n",
+                    address.getPublicIp(),
+                    address.getDomain(),
+                    address.getAllocationId(),
+                    address.getNetworkInterfaceId());
+        }
 
         /*****************
          * Terminate the instance after given time period
