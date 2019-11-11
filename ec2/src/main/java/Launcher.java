@@ -92,13 +92,15 @@ static String key="key";
     		s3.getObject(new GetObjectRequest(bucketName, key), localF);
             Thread.sleep(10000);
             System.out.println();
-            
+
 
             /*****************Delete file from bucket****************/
 
             s3.deleteObject(bucketName,key);
 
             /*****************Delete all files from bucket****************/
+            objectListing = s3.listObjects(new ListObjectsRequest()
+                    .withBucketName(bucketName));
             for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
                 s3.deleteObject(bucketName,objectSummary.getKey());
             }
