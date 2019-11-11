@@ -93,7 +93,7 @@ public class Main {
         String gid = null;
         String groupNamePrefix = "JavaSecurityGroup";
         String secGroupName="";
-
+        secGroupName=groupNamePrefix + (Math.random());
         // check for exiting group first
         DescribeSecurityGroupsRequest req = new DescribeSecurityGroupsRequest();
         req.getFilters().add(new Filter().withName("group-name").withValues(groupNamePrefix + "*"));
@@ -111,7 +111,7 @@ public class Main {
             // create new group
             try {
                 CreateSecurityGroupRequest csgr = new CreateSecurityGroupRequest();
-                secGroupName=groupNamePrefix + (Math.random());
+
                 csgr.withGroupName(secGroupName).withDescription("Proseminar security group");
                 CreateSecurityGroupResult resultsc = ec2.createSecurityGroup(csgr);
                 System.out.println(String.format("Security group created: [%s]", resultsc.getGroupId()));
@@ -187,7 +187,7 @@ public class Main {
                 .withImageId(IMAGE_ID)
                 .withInstanceType(InstanceType.T2Micro)
                 .withKeyName(keyname)
-                .withSecurityGroups(secGroupName)
+                .withSecurityGroups(groups.get(0).getGroupName())
                 .withMaxCount(1)
                 .withMinCount(1);
 
@@ -200,9 +200,11 @@ public class Main {
                 createdInstanceId, IMAGE_ID);
 
         /***************** Create EBS volume for the instance ****************/
+        Thread.sleep(60000);
         DescribeInstanceStatusRequest disr = new DescribeInstanceStatusRequest().withInstanceIds(createdInstanceId);
         DescribeInstanceStatusResult instStatusResult = ec2.describeInstanceStatus(disr);
         List<InstanceStatus> statuses = instStatusResult.getInstanceStatuses();
+
         if (statuses.size() != 1)
             throw new IllegalStateException("not exactly one instance status result for id "
                     + createdInstanceId + "(yields " + statuses.size() + ")");
@@ -226,19 +228,8 @@ public class Main {
         System.out.println("created and attached volume: " + volumeId);
 
         /***************** Print the public IP and DNS of the instance ****************/
-        DescribeAddressesResult response = ec2.describeAddresses();
-
-        for(Address address : response.getAddresses()) {
-            System.out.printf(
-                    "Found address with public IP %s, " +
-                            "domain %s, " +
-                            "allocation id %s " +
-                            "and NIC id %s\n",
-                    address.getPublicIp(),
-                    address.getDomain(),
-                    address.getAllocationId(),
-                    address.getNetworkInterfaceId());
-        }
+        InstanceNetworkInterface instanceNetworkInterface = ec2.describeInstances().getReservations().get(0).getInstances().get(0).getNetworkInterfaces().get(0);
+        System.out.println("Public IP: "+instanceNetworkInterface.getAssociation().getPublicIp()+" DNS: "+instanceNetworkInterface.getAssociation().getPublicDnsName());
 
         /*****************
          * Terminate the instance after given time period
